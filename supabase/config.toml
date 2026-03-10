@@ -1,0 +1,13 @@
+project_id = "ibenemxicnhjmvzuklrl"
+
+[functions.plant-care]
+verify_jwt = false
+
+[functions.identify-plant]
+verify_jwt = false
+
+[functions.diagnose-plant]
+verify_jwt = false
+
+[functions.care-notifications]
+verify_jwt = false
