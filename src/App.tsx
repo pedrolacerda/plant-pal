@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlants } from "@/hooks/usePlants";
+import { PlantAssistantChat } from "@/components/PlantAssistantChat";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -12,6 +14,7 @@ const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { plants } = usePlants(user?.id);
 
   if (loading) {
     return (
@@ -22,11 +25,16 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={user ? <Index /> : <Navigate to="/auth" replace />} />
-      <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={user ? <Index /> : <Navigate to="/auth" replace />} />
+        <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      {user && (
+        <PlantAssistantChat userId={user.id} plants={plants} />
+      )}
+    </>
   );
 }
 
