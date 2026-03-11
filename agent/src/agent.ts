@@ -3,17 +3,15 @@ import type { CopilotSession } from "@github/copilot-sdk";
 import { identifyDiseaseTool } from "./tools/plants.js";
 import { getCareRoutineTool } from "./tools/care.js";
 import { recommendAccessoriesTool } from "./tools/accessories.js";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export interface PlantSummary {
-  id: string;
-  name: string;
-  light: "low" | "medium" | "high";
-  tip?: string;
-}
+import {
+  getMyPlantsTool,
+  getUpcomingCareTool,
+  getPlantScheduleTool,
+  userPlantsRegistry,
+} from "./tools/userdata.js";
+import { formatPlantList, formatUpcomingTasks } from "./types.js";
+import type { PlantSummary } from "./types.js";
+export type { PlantSummary } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Singleton CopilotClient
@@ -59,18 +57,19 @@ export async function stopClient(): Promise<void> {
 const sessions = new Map<string, CopilotSession>();
 
 /**
- * Build the personalised system message for a user, injecting their plant list.
+ * Build the personalised system message for a user, injecting their plant list
+ * and upcoming care calendar.
  */
-function buildSystemMessage(plants: PlantSummary[]): string {
-  const plantList =
+function buildSystemMessage(userId: string, plants: PlantSummary[]): string {
+  const plantSection =
     plants.length > 0
-      ? plants
-          .map(
-            (p) =>
-              `• ${p.name} (light: ${p.light}${p.tip ? `, tip: "${p.tip}"` : ""})`
-          )
-          .join("\n")
+      ? formatPlantList(plants)
       : "The user has no plants registered yet.";
+
+  const calendarSection =
+    plants.length > 0
+      ? formatUpcomingTasks(plants, 7)
+      : "No upcoming tasks — user has no plants yet.";
 
   return `You are PlantBot, a friendly and knowledgeable plant care expert assistant \
 embedded in the Meu Jardim app.
@@ -81,9 +80,16 @@ You help users with:
 - Plant care best practices for different environments and seasons
 - Recommending types of accessories, tools, and supplies (without brand names or links)
 - General gardening advice
+- Answering questions about the user's own plants and their care schedule
+
+The user's ID is: ${userId}
+When calling get_my_plants, get_upcoming_care, or get_plant_schedule, ALWAYS pass \`userId: "${userId}"\`.
 
 The user's current plants in Meu Jardim:
-${plantList}
+${plantSection}
+
+Upcoming care tasks (next 7 days):
+${calendarSection}
 
 Guidelines:
 - Always respond in the same language the user writes in (Portuguese or English).
@@ -91,7 +97,9 @@ Guidelines:
 - When diagnosing, always ask for more details if the description is vague.
 - When recommending accessories, focus on WHAT to look for, not specific brands.
 - If a question is about one of the user's plants, reference it by name.
-- Do not provide URLs or external links.`;
+- Do not provide URLs or external links.
+- Use the data tools (get_my_plants, get_upcoming_care, get_plant_schedule) to fetch \
+up-to-date information whenever the user asks about their plants or schedule.`;
 }
 
 /**
@@ -112,23 +120,41 @@ export async function getOrCreateSession(
       await existing.disconnect().catch(() => {});
       sessions.delete(userId);
     }
+    userPlantsRegistry.delete(userId);
   }
 
+  // Always keep the registry up-to-date with the latest plant data.
+  userPlantsRegistry.set(userId, plants);
+
   if (sessions.has(userId)) {
+    console.log(`[agent] Reusing existing session for userId=${userId}`);
     return sessions.get(userId)!;
   }
 
+  const model = "openai/gpt-4o";
+  console.log(`[agent] Creating new session for userId=${userId} model=${model} tools=${[
+    "identify_disease", "get_care_routine", "recommend_accessories",
+    "get_my_plants", "get_upcoming_care", "get_plant_schedule",
+  ].join(",")}`);
+
   const session = await client.createSession({
-    model: "openai/gpt-5-mini",
+    model,
     provider: {
       type: "openai",
       baseUrl: "https://models.github.ai/inference/v1",
       apiKey,
     },
-    tools: [identifyDiseaseTool, getCareRoutineTool, recommendAccessoriesTool],
+    tools: [
+      identifyDiseaseTool,
+      getCareRoutineTool,
+      recommendAccessoriesTool,
+      getMyPlantsTool,
+      getUpcomingCareTool,
+      getPlantScheduleTool,
+    ],
     systemMessage: {
       mode: "replace",
-      content: buildSystemMessage(plants),
+      content: buildSystemMessage(userId, plants),
     },
     onPermissionRequest: approveAll,
     infiniteSessions: { enabled: false },
@@ -154,6 +180,7 @@ export async function clearSession(userId: string): Promise<void> {
   if (session) {
     await session.disconnect().catch(() => {});
     sessions.delete(userId);
-    console.log(`[agent] Session cleared for user ${userId}`);
   }
+  userPlantsRegistry.delete(userId);
+  console.log(`[agent] Session cleared for user ${userId}`);
 }

@@ -62,6 +62,10 @@ function plantSummaries(plants: Plant[]) {
     name: p.name,
     light: p.light,
     tip: p.tip,
+    createdAt: p.createdAt,
+    careIntervals: p.careIntervals,
+    careAmounts: p.careAmounts,
+    nextCareDates: p.nextCareDates,
   }));
 }
 

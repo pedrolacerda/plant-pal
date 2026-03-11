@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import os from "os";
@@ -16,7 +17,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const PORT = Number(process.env.PORT ?? 3001);
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "http://localhost:5173";
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "http://localhost:8080";
 const AGENT_API_KEY = process.env.AGENT_API_KEY;
 
 // ---------------------------------------------------------------------------
@@ -25,8 +26,8 @@ const AGENT_API_KEY = process.env.AGENT_API_KEY;
 
 const app = express();
 
-app.use(express.json({ limit: "1mb" }));
-
+// CORS must be registered before body parser so that error responses
+// (e.g. PayloadTooLargeError) still include CORS headers.
 app.use(
   cors({
     origin: ALLOWED_ORIGIN,
@@ -34,6 +35,8 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+app.use(express.json({ limit: "10mb" }));
 
 // ---------------------------------------------------------------------------
 // Auth middleware
@@ -116,18 +119,23 @@ app.post("/chat", requireAuth, async (req: Request, res: Response) => {
     return;
   }
 
+  const msgPreview = message ? message.slice(0, 80) + (message.length > 80 ? "…" : "") : "(image only)";
+  console.log(`[chat] Request — userId=${userId} plants=${plants.length} hasImage=${!!imageBase64} message="${msgPreview}"`);
+
   // Set up SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no"); // Disable Nginx buffering
   res.flushHeaders();
+  console.log(`[chat] SSE headers flushed for userId=${userId}`);
 
   const sendEvent = (data: object) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
   let tempImagePath: string | null = null;
+  let deltaCount = 0;
 
   try {
     // Write image to a temp file so the SDK can attach it via file path
@@ -135,52 +143,83 @@ app.post("/chat", requireAuth, async (req: Request, res: Response) => {
       const ext = mimeToExt(imageMimeType ?? "image/jpeg");
       tempImagePath = path.join(os.tmpdir(), `plantbot-${Date.now()}.${ext}`);
       await writeFile(tempImagePath, Buffer.from(imageBase64, "base64"));
+      console.log(`[chat] Temp image written: ${tempImagePath}`);
     }
 
     const session = await getOrCreateSession(userId, plants);
+    console.log(`[chat] Session ready for userId=${userId}`);
+
+    // DEBUG: log all events to understand SDK behavior
+    const unsubAll = session.on((event) => {
+      console.log(`[chat][DEBUG] Event: ${event.type}`, JSON.stringify(event.data).slice(0, 300));
+    });
 
     // Subscribe to streaming deltas before sending the message
     const unsubDelta = session.on("assistant.message_delta", (event) => {
+      deltaCount++;
+      if (deltaCount === 1) {
+        console.log(`[chat] First delta received for userId=${userId}`);
+      }
       sendEvent({ type: "delta", content: event.data.deltaContent });
+    });
+
+    // Fallback: some SDK versions emit the complete message instead of deltas.
+    // If no deltas were received, send the full content as a single delta.
+    const unsubMessage = session.on("assistant.message", (event) => {
+      const content = (event.data as { content?: string }).content;
+      if (deltaCount === 0 && content) {
+        console.log(`[chat] No deltas received — using assistant.message fallback for userId=${userId}`);
+        sendEvent({ type: "delta", content });
+        deltaCount++;
+      }
     });
 
     // Also emit tool execution start/complete so the UI can show a thinking indicator
     const unsubToolStart = session.on("tool.execution_start", (event) => {
-      sendEvent({ type: "tool_start", toolName: (event.data as { toolName?: string }).toolName ?? "tool" });
+      const toolName = (event.data as { toolName?: string }).toolName ?? "tool";
+      console.log(`[chat] Tool start: ${toolName} for userId=${userId}`);
+      sendEvent({ type: "tool_start", toolName });
     });
 
     const unsubToolEnd = session.on("tool.execution_complete", (event) => {
-      sendEvent({ type: "tool_end", toolName: (event.data as { toolName?: string }).toolName ?? "tool" });
+      const toolName = (event.data as { toolName?: string }).toolName ?? "tool";
+      console.log(`[chat] Tool end: ${toolName} for userId=${userId}`);
+      sendEvent({ type: "tool_end", toolName });
     });
 
-    // Wait for the session to finish processing
-    await new Promise<void>((resolve, reject) => {
-      const unsubIdle = session.on("session.idle", () => {
-        unsubIdle();
-        resolve();
-      });
+    // Build send options – attach image if a temp file was written
+    const sendOptions: Parameters<typeof session.sendAndWait>[0] = {
+      prompt: message || "Please analyse this image.",
+    };
+    if (tempImagePath) {
+      sendOptions.attachments = [
+        { type: "file", path: tempImagePath },
+      ];
+    }
 
-      // Build send options – attach image if a temp file was written
-      const sendOptions: Parameters<typeof session.send>[0] = {
-        prompt: message || "Please analyse this image.",
-      };
-      if (tempImagePath) {
-        sendOptions.attachments = [
-          { type: "file", path: tempImagePath },
-        ];
-      }
+    // Use sendAndWait which properly handles session.error (rejects on
+    // errors) and waits for session.idle with a timeout.
+    console.log(`[chat] Calling session.sendAndWait() for userId=${userId}`);
+    const result = await session.sendAndWait(sendOptions, 300_000);
 
-      session.send(sendOptions).catch(reject);
-    });
+    // If no streaming deltas were received, use the final message as fallback.
+    if (deltaCount === 0 && result?.data?.content) {
+      console.log(`[chat] No deltas received — using sendAndWait result for userId=${userId}`);
+      sendEvent({ type: "delta", content: result.data.content });
+      deltaCount++;
+    }
 
     unsubDelta();
+    unsubMessage();
     unsubToolStart();
     unsubToolEnd();
+    unsubAll();
 
+    console.log(`[chat] Done — userId=${userId} totalDeltas=${deltaCount}`);
     sendEvent({ type: "done" });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[agent] Chat error:", err);
+    console.error(`[chat] Error for userId=${userId}:`, err);
     sendEvent({ type: "error", message });
   } finally {
     res.end();
