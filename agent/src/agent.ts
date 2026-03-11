@@ -131,7 +131,7 @@ export async function getOrCreateSession(
     return sessions.get(userId)!;
   }
 
-  const model = "openai/gpt-4o";
+  const model = "openai/gpt-5-mini";
   console.log(`[agent] Creating new session for userId=${userId} model=${model} tools=${[
     "identify_disease", "get_care_routine", "recommend_accessories",
     "get_my_plants", "get_upcoming_care", "get_plant_schedule",
