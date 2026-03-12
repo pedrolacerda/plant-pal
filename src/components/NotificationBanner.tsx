@@ -1,54 +1,87 @@
 import { useState, useEffect } from "react";
 import { Bell, BellOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   isNotificationSupported,
   getNotificationPermission,
   requestNotificationPermission,
   subscribeToPush,
+  unsubscribePush,
 } from "@/lib/notifications";
 import { useAuth } from "@/hooks/useAuth";
 
 export function NotificationBanner() {
   const { user } = useAuth();
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
-    setPermission(getNotificationPermission());
+    const perm = getNotificationPermission();
+    setPermission(perm);
+
+    if (perm === "granted" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.ready.then((reg) =>
+        reg.pushManager.getSubscription().then((sub) => setSubscribed(!!sub))
+      );
+    }
   }, []);
 
   if (!isNotificationSupported()) return null;
-  if (permission === "granted") return null;
 
-  const handleEnable = async () => {
+  const handleToggle = async () => {
+    if (permission === "denied") return; // browser-level block — nothing we can do
+
+    if (subscribed) {
+      const ok = await unsubscribePush(user!.id);
+      if (ok) setSubscribed(false);
+      return;
+    }
+
     const granted = await requestNotificationPermission();
     setPermission(granted ? "granted" : "denied");
     if (granted && user?.id) {
-      await subscribeToPush(user.id);
+      const ok = await subscribeToPush(user.id);
+      setSubscribed(ok);
     }
   };
 
-  if (permission === "denied") {
-    return (
-      <div className="flex items-center gap-3 bg-muted rounded-xl p-3 border border-border">
-        <BellOff className="w-5 h-5 text-muted-foreground shrink-0" />
-        <p className="text-xs text-muted-foreground">
-          Notificações bloqueadas. Ative nas configurações do navegador para receber lembretes.
-        </p>
-      </div>
-    );
-  }
+  const isDenied = permission === "denied";
+  const label = isDenied
+    ? "Notificações bloqueadas no navegador"
+    : subscribed
+    ? "Desativar notificações"
+    : "Ativar notificações";
 
   return (
-    <div className="flex items-center gap-3 bg-accent rounded-xl p-3 border border-border">
-      <Bell className="w-5 h-5 text-primary shrink-0" />
-      <div className="flex-1">
-        <p className="text-sm font-medium text-foreground">Ativar lembretes?</p>
-        <p className="text-xs text-muted-foreground">Receba notificações dos cuidados do dia</p>
-      </div>
-      <Button size="sm" onClick={handleEnable} className="rounded-lg shrink-0">
-        Ativar
-      </Button>
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={handleToggle}
+            disabled={isDenied}
+            className="p-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed
+              text-muted-foreground hover:text-foreground hover:bg-accent
+              data-[active=true]:text-primary"
+            data-active={subscribed}
+            aria-label={label}
+          >
+            {subscribed ? (
+              <Bell className="w-5 h-5 fill-current" />
+            ) : (
+              <BellOff className="w-5 h-5" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>{label}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
+

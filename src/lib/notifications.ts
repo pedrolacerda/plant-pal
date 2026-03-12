@@ -69,6 +69,27 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
   }
 }
 
+export async function unsubscribePush(userId: string): Promise<boolean> {
+  try {
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await supabase
+          .from("push_subscriptions")
+          .delete()
+          .eq("user_id", userId)
+          .eq("endpoint", sub.endpoint);
+        await sub.unsubscribe();
+      }
+    }
+    return true;
+  } catch (e) {
+    console.error("Push unsubscribe failed:", e);
+    return false;
+  }
+}
+
 let checkInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startDailyNotificationCheck() {
