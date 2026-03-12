@@ -5,9 +5,12 @@ import {
   isNotificationSupported,
   getNotificationPermission,
   requestNotificationPermission,
+  subscribeToPush,
 } from "@/lib/notifications";
+import { useAuth } from "@/hooks/useAuth";
 
 export function NotificationBanner() {
+  const { user } = useAuth();
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
 
   useEffect(() => {
@@ -20,6 +23,9 @@ export function NotificationBanner() {
   const handleEnable = async () => {
     const granted = await requestNotificationPermission();
     setPermission(granted ? "granted" : "denied");
+    if (granted && user?.id) {
+      await subscribeToPush(user.id);
+    }
   };
 
   if (permission === "denied") {
