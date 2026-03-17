@@ -36,16 +36,13 @@ const Index = () => {
             <span className="text-3xl">🌿</span>
             <h1 className="font-display text-2xl font-bold text-foreground">Meu Jardim</h1>
           </div>
-          <div className="flex items-center gap-1">
-            <NotificationBanner />
-            <button
-              onClick={signOut}
-              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              aria-label="Sair"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={signOut}
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            aria-label="Sair"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
         <p className="text-sm text-muted-foreground mt-1">Cuide das suas plantas com carinho</p>
       </header>
@@ -53,6 +50,7 @@ const Index = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="flex-1 px-5 pb-24 overflow-y-auto">
           <TabsContent value="home" className="mt-0 space-y-4">
+            <NotificationBanner />
             <div className="bg-accent/60 rounded-2xl p-4 border border-border">
               <h2 className="font-display text-base font-semibold text-foreground mb-1">Próximos cuidados</h2>
               <UpcomingTasks plants={plants} />
