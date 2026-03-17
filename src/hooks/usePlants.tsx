@@ -36,7 +36,7 @@ export function usePlants(userId: string | undefined) {
     fetchPlants();
   }, [fetchPlants]);
 
-  const addPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts) => {
+  const addPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts, photo?: string) => {
     if (!userId) return;
     const { data, error } = await supabase
       .from("plants")
@@ -47,6 +47,7 @@ export function usePlants(userId: string | undefined) {
         care_intervals: careIntervals ?? {},
         care_amounts: careAmounts ?? {},
         tip: tip ?? null,
+        photo: photo ?? null,
       })
       .select()
       .single();

@@ -9,7 +9,7 @@ import { Leaf, Loader2, Camera, X, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PlantFormProps {
-  onAdd: (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts) => void;
+  onAdd: (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts, photo?: string) => void;
 }
 
 const LIGHT_OPTIONS: LightLevel[] = ["low", "medium", "high"];
@@ -123,7 +123,7 @@ export function PlantForm({ onAdd }: PlantFormProps) {
       if (waterAmount) careAmounts.water = waterAmount;
       if (fertilizerAmount) careAmounts.fertilizer = fertilizerAmount;
       const hasCareAmounts = Object.keys(careAmounts).length > 0;
-      onAdd(currentName, light, { water: waterDays, fertilize: fertilizeDays, spray: sprayDays }, tip, hasCareAmounts ? careAmounts : undefined);
+      onAdd(currentName, light, { water: waterDays, fertilize: fertilizeDays, spray: sprayDays }, tip, hasCareAmounts ? careAmounts : undefined, photoPreview ?? undefined);
       toast({
         title: "🌿 Planta adicionada!",
         description: tip || "Cuidados personalizados pela IA.",
@@ -149,14 +149,15 @@ export function PlantForm({ onAdd }: PlantFormProps) {
           data.tip,
           data.waterAmount || data.fertilizerAmount
             ? { water: data.waterAmount, fertilizer: data.fertilizerAmount }
-            : undefined
+            : undefined,
+          photoPreview ?? undefined
         );
         toast({
           title: "🌿 Planta adicionada!",
           description: data.tip || "Cuidados personalizados pela IA.",
         });
       } else {
-        onAdd(currentName, light);
+        onAdd(currentName, light, undefined, undefined, undefined, photoPreview ?? undefined);
         toast({
           title: "🌿 Planta adicionada",
           description: "Usando intervalos padrão de cuidado.",
@@ -164,7 +165,7 @@ export function PlantForm({ onAdd }: PlantFormProps) {
         });
       }
     } catch {
-      onAdd(currentName, light);
+      onAdd(currentName, light, undefined, undefined, undefined, photoPreview ?? undefined);
       toast({
         title: "🌿 Planta adicionada",
         description: "Usando intervalos padrão de cuidado.",

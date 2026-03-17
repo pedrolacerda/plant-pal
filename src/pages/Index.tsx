@@ -18,8 +18,8 @@ const Index = () => {
   const [editingPlant, setEditingPlant] = useState<Plant | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
 
-  const handleAddPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts) => {
-    await addPlant(name, light, careIntervals, tip, careAmounts);
+  const handleAddPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts, photo?: string) => {
+    await addPlant(name, light, careIntervals, tip, careAmounts, photo);
     setActiveTab("home");
   };
 
