@@ -126,17 +126,27 @@ export function generateCareTasks(plant: Plant, daysAhead = 60): CareTask[] {
         current.setDate(current.getDate() + interval);
       }
     } else {
-      // Original behavior: from today
-      for (let d = 0; d < daysAhead; d += interval) {
-        const date = new Date(start);
-        date.setDate(date.getDate() + d);
+      // Use createdAt as anchor so tasks aren't always pinned to today
+      const anchor = new Date(plant.createdAt);
+      anchor.setHours(0, 0, 0, 0);
+      const endDate = new Date(start);
+      endDate.setDate(endDate.getDate() + daysAhead);
+
+      // Advance anchor to the first occurrence on or after today
+      let current = new Date(anchor);
+      while (current < start) {
+        current.setDate(current.getDate() + interval);
+      }
+
+      while (current <= endDate) {
         tasks.push({
           plantId: plant.id,
           plantName: plant.name,
           type,
-          date: date.toISOString().split("T")[0],
+          date: current.toISOString().split("T")[0],
           amount,
         });
+        current.setDate(current.getDate() + interval);
       }
     }
   }
