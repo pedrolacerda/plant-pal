@@ -159,17 +159,15 @@ export function getTasksForDate(plants: Plant[], date: string): CareTask[] {
 }
 
 export function getUpcomingTasks(plants: Plant[], days = 7): CareTask[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(today);
+  const todayDate = new Date();
+  const todayStr = todayDate.toISOString().split("T")[0];
+  const end = new Date(todayDate);
   end.setDate(end.getDate() + days);
+  const endStr = end.toISOString().split("T")[0];
 
   return plants
     .flatMap((p) => generateCareTasks(p, days))
-    .filter((t) => {
-      const d = new Date(t.date);
-      return d >= today && d <= end;
-    })
+    .filter((t) => t.date >= todayStr && t.date <= endStr)
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
