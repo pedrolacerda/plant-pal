@@ -26,6 +26,7 @@ interface Plant {
   light: string;
   care_intervals: Record<string, number> | null;
   created_at: string;
+  next_care_dates: Record<string, string> | null;
 }
 
 interface NotifTask {
@@ -49,12 +50,20 @@ function computeNotification(
     for (const type of ["water", "fertilize", "spray"] as const) {
       const interval = (intervals as Record<string, number>)[type];
       if (!interval) continue;
-      const created = new Date(plant.created_at);
-      created.setUTCHours(0, 0, 0, 0);
-      const daysDiff = Math.floor(
-        (today.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+
+      const customDate = plant.next_care_dates?.[type];
+      let anchor: Date;
+      if (customDate) {
+        anchor = new Date(customDate + "T00:00:00Z");
+      } else {
+        anchor = new Date(plant.created_at);
+        anchor.setUTCHours(0, 0, 0, 0);
+      }
+
+      const daysDiff = Math.round(
+        Math.abs(today.getTime() - anchor.getTime()) / (1000 * 60 * 60 * 24)
       );
-      if (daysDiff >= 0 && daysDiff % interval === 0) {
+      if (daysDiff % interval === 0) {
         todayTasks.push({ plantId: plant.id, plantName: plant.name, type, date: todayStr });
       }
     }
@@ -111,6 +120,7 @@ serve(async (req) => {
         light: p.light as string,
         care_intervals: (p.careIntervals as Record<string, number> | undefined) ?? null,
         created_at: p.createdAt as string,
+        next_care_dates: (p.nextCareDates as Record<string, string> | undefined) ?? null,
       }));
 
       const result = computeNotification(normalized as Plant[], todayStr);
@@ -157,7 +167,7 @@ serve(async (req) => {
     for (const sub of subscriptions ?? []) {
       const { data: plants } = await supabaseAdmin
         .from("plants")
-        .select("id, name, light, care_intervals, created_at")
+        .select("id, name, light, care_intervals, created_at, next_care_dates")
         .eq("user_id", sub.user_id);
 
       const notification = computeNotification((plants ?? []) as Plant[], todayStr);
