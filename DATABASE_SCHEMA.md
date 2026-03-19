@@ -28,6 +28,9 @@ Stores each user's registered plants with care settings.
 | `light`           | `light_level` (enum)       | NO       | `'medium'`               | Light requirement              |
 | `photo`           | `text`                     | YES      | —                        | Base64 data URL of plant photo |
 | `tip`             | `text`                     | YES      | —                        | AI-generated care tip          |
+| `scientific_name` | `text`                     | YES      | —                        | AI-populated scientific (Latin) name |
+| `description`     | `text`                     | YES      | —                        | AI-generated brief description of the plant |
+| `fertilizer_types` | `jsonb`                    | YES      | `'[]'`                   | AI-suggested fertilizers available in the Brazilian market |
 | `care_intervals`  | `jsonb`                    | YES      | `'{}'`                   | `{ water, fertilize, spray }` in days |
 | `next_care_dates` | `jsonb`                    | YES      | `'{}'`                   | `{ water?, fertilize?, spray? }` ISO dates |
 | `created_at`      | `timestamp with time zone` | NO       | `now()`                  |                                |

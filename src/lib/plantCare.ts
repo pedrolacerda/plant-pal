@@ -14,6 +14,9 @@ export interface CareAmounts {
 export interface Plant {
   id: string;
   name: string;
+  scientificName?: string;
+  description?: string;
+  fertilizerTypes?: string[];
   light: LightLevel;
   createdAt: string;
   careIntervals?: CareIntervals;

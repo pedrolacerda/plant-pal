@@ -7,6 +7,7 @@ interface PlantCardProps {
   plant: Plant;
   onDelete: (id: string) => void;
   onEdit: (plant: Plant) => void;
+  onViewDetails: (plant: Plant) => void;
 }
 
 function getTaskLabel(task: CareTask, today: string): string {
@@ -18,7 +19,7 @@ function getTaskLabel(task: CareTask, today: string): string {
   return `${getCareLabel(task.type)} em ${diff}d`;
 }
 
-export function PlantCard({ plant, onDelete, onEdit }: PlantCardProps) {
+export function PlantCard({ plant, onDelete, onEdit, onViewDetails }: PlantCardProps) {
   const today = new Date().toISOString().split("T")[0];
   const allTasks = generateCareTasks(plant, 30);
   const todayTasks = allTasks.filter((t) => t.date === today);
@@ -35,15 +36,19 @@ export function PlantCard({ plant, onDelete, onEdit }: PlantCardProps) {
   return (
     <div className="bg-card rounded-2xl p-4 border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
+        <button
+          className="flex items-center gap-3 flex-1 text-left"
+          onClick={() => onViewDetails(plant)}
+          aria-label={`Ver detalhes de ${plant.name}`}
+        >
           {plant.photo ? (
             <img
               src={plant.photo}
               alt={plant.name}
-              className="w-12 h-12 rounded-xl object-cover"
+              className="w-12 h-12 rounded-xl object-cover shrink-0"
             />
           ) : (
-            <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-2xl">
+            <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-2xl shrink-0">
               🪴
             </div>
           )}
@@ -54,8 +59,11 @@ export function PlantCard({ plant, onDelete, onEdit }: PlantCardProps) {
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               {getLightIcon(plant.light)} {getLightLabel(plant.light)}
             </p>
+            {plant.scientificName && (
+              <p className="text-xs text-muted-foreground italic">{plant.scientificName}</p>
+            )}
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-1">
           <button
             onClick={() => onEdit(plant)}
