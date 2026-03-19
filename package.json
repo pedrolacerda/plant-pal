@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "notify:force": "bun scripts/force-send-notifications.ts"
+    "notify:force": "bun scripts/force-send-notifications.ts",
+    "backfill:plant-details": "bun scripts/backfill-plant-details.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

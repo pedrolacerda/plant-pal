@@ -22,9 +22,9 @@ serve(async (req) => {
       high: "muita luz",
     };
 
-    const systemPrompt = `Você é um especialista em botânica e cuidados de plantas. Retorne informações de cuidados para plantas domésticas. Responda APENAS usando a tool fornecida.`;
+    const systemPrompt = `Você é um especialista em botânica e cuidados de plantas domésticas no Brasil. Retorne informações detalhadas de cuidados para plantas domésticas, incluindo fertilizantes disponíveis no mercado brasileiro. Responda APENAS usando a tool fornecida.`;
 
-    const userPrompt = `Planta: "${plantName}" em ambiente com ${lightLabels[light] || light}. Quais são os intervalos ideais de rega, adubação e spray/umidificação (em dias), a quantidade de água (em ml) por rega, a quantidade de fertilizante diluído (em ml) por adubação, e uma dica curta de cuidado?`;
+    const userPrompt = `Planta: "${plantName}" em ambiente com ${lightLabels[light] || light}. Forneça: intervalos ideais de rega, adubação e spray/umidificação (em dias), quantidade de água (em ml) por rega, quantidade de fertilizante diluído (em ml) por adubação, dica curta de cuidado, nome científico, descrição da planta (até 200 caracteres), e lista de fertilizantes recomendados disponíveis no mercado brasileiro.`;
 
     const response = await fetch("https://models.github.ai/inference/v1/chat/completions", {
       method: "POST",
@@ -75,8 +75,21 @@ serve(async (req) => {
                     type: "string",
                     description: "Indicação do tipo de fertilizante ideal para esta planta (ex: NPK 10-10-10, adubo orgânico rico em nitrogênio, calcário dolomítico). Máx 80 caracteres.",
                   },
+                  scientificName: {
+                    type: "string",
+                    description: "Nome científico da planta em latim (ex: Nephrolepis exaltata)",
+                  },
+                  description: {
+                    type: "string",
+                    description: "Descrição breve da planta: origem, características e particularidades. Máx 200 caracteres.",
+                  },
+                  fertilizerTypes: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Lista de 2 a 4 fertilizantes recomendados disponíveis no mercado brasileiro (ex: 'Forth Plantas Verdes', 'Vitaplan NPK 10-10-10', 'Húmus de Minhoca Orgânico', 'Osmocote 14-14-14'). Use marcas ou tipos encontrados no Brasil.",
+                  },
                 },
-                required: ["waterDays", "waterAmount", "fertilizeDays", "fertilizerAmount", "sprayDays", "tip", "fertilizerHint"],
+                required: ["waterDays", "waterAmount", "fertilizeDays", "fertilizerAmount", "sprayDays", "tip", "fertilizerHint", "scientificName", "description", "fertilizerTypes"],
                 additionalProperties: false,
               },
             },
