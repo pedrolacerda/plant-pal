@@ -11,7 +11,6 @@
  *
  * Requires a .env file with:
  *   VITE_SUPABASE_URL
- *   VITE_SUPABASE_PUBLISHABLE_KEY
  *   VITE_GITHUB_MODELS_API_KEY
  *   SUPABASE_SERVICE_ROLE_KEY   (needed to update all users' plants)
  */
