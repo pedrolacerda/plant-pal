@@ -128,7 +128,7 @@ cd agent && npm run dev
 | `GITHUB_MODELS_API_KEY` | ✅ | GitHub Models API key (same key as Supabase Edge Functions) |
 | `AGENT_API_KEY` | ❌ | Shared secret for frontend→backend auth. Leave blank in dev to disable. |
 | `PORT` | ❌ | Port to listen on (default: `3001`) |
-| `ALLOWED_ORIGIN` | ❌ | Frontend URL for CORS (default: `http://localhost:5173`) |
+| `ALLOWED_ORIGIN` | ❌ | Frontend URL for CORS (default: `http://localhost:8080`) |
 
 ## Available scripts
 
