@@ -6,6 +6,7 @@ import { CareCalendar } from "@/components/CareCalendar";
 import { UpcomingTasks } from "@/components/UpcomingTasks";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { PlantEditSheet } from "@/components/PlantEditSheet";
+import { PlantDetailsSheet } from "@/components/PlantDetailsSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlants } from "@/hooks/usePlants";
 import type { Plant, LightLevel, CareIntervals, CareAmounts } from "@/lib/plantCare";
@@ -17,9 +18,16 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [editingPlant, setEditingPlant] = useState<Plant | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [detailsPlant, setDetailsPlant] = useState<Plant | null>(null);
+  const [detailsSheetOpen, setDetailsSheetOpen] = useState(false);
 
-  const handleAddPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts) => {
-    await addPlant(name, light, careIntervals, tip, careAmounts);
+  const handleViewDetails = (plant: Plant) => {
+    setDetailsPlant(plant);
+    setDetailsSheetOpen(true);
+  };
+
+  const handleAddPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts, photo?: string, scientificName?: string, description?: string, fertilizerTypes?: string[]) => {
+    await addPlant(name, light, careIntervals, tip, careAmounts, photo, scientificName, description, fertilizerTypes);
     setActiveTab("home");
   };
 
@@ -66,7 +74,7 @@ const Index = () => {
                   Minhas plantas ({plants.length})
                 </h2>
                 {plants.map((plant) => (
-                  <PlantCard key={plant.id} plant={plant} onDelete={(id) => deletePlant(id)} onEdit={handleEditPlant} />
+                  <PlantCard key={plant.id} plant={plant} onDelete={(id) => deletePlant(id)} onEdit={handleEditPlant} onViewDetails={handleViewDetails} />
                 ))}
               </div>
             ) : null}
@@ -105,6 +113,12 @@ const Index = () => {
         open={editSheetOpen}
         onOpenChange={setEditSheetOpen}
         onSave={(p) => updatePlant(p)}
+      />
+
+      <PlantDetailsSheet
+        plant={detailsPlant}
+        open={detailsSheetOpen}
+        onOpenChange={setDetailsSheetOpen}
       />
     </div>
   );

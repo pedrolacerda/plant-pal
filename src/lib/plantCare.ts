@@ -14,6 +14,9 @@ export interface CareAmounts {
 export interface Plant {
   id: string;
   name: string;
+  scientificName?: string;
+  description?: string;
+  fertilizerTypes?: string[];
   light: LightLevel;
   createdAt: string;
   careIntervals?: CareIntervals;
@@ -126,17 +129,27 @@ export function generateCareTasks(plant: Plant, daysAhead = 60): CareTask[] {
         current.setDate(current.getDate() + interval);
       }
     } else {
-      // Original behavior: from today
-      for (let d = 0; d < daysAhead; d += interval) {
-        const date = new Date(start);
-        date.setDate(date.getDate() + d);
+      // Use createdAt as anchor so tasks aren't always pinned to today
+      const anchor = new Date(plant.createdAt);
+      anchor.setHours(0, 0, 0, 0);
+      const endDate = new Date(start);
+      endDate.setDate(endDate.getDate() + daysAhead);
+
+      // Advance anchor to the first occurrence on or after today
+      let current = new Date(anchor);
+      while (current < start) {
+        current.setDate(current.getDate() + interval);
+      }
+
+      while (current <= endDate) {
         tasks.push({
           plantId: plant.id,
           plantName: plant.name,
           type,
-          date: date.toISOString().split("T")[0],
+          date: current.toISOString().split("T")[0],
           amount,
         });
+        current.setDate(current.getDate() + interval);
       }
     }
   }
@@ -149,17 +162,15 @@ export function getTasksForDate(plants: Plant[], date: string): CareTask[] {
 }
 
 export function getUpcomingTasks(plants: Plant[], days = 7): CareTask[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(today);
+  const todayDate = new Date();
+  const todayStr = todayDate.toISOString().split("T")[0];
+  const end = new Date(todayDate);
   end.setDate(end.getDate() + days);
+  const endStr = end.toISOString().split("T")[0];
 
   return plants
     .flatMap((p) => generateCareTasks(p, days))
-    .filter((t) => {
-      const d = new Date(t.date);
-      return d >= today && d <= end;
-    })
+    .filter((t) => t.date >= todayStr && t.date <= endStr)
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 

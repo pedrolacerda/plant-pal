@@ -19,6 +19,9 @@ export function usePlants(userId: string | undefined) {
         data.map((row: any) => ({
           id: row.id,
           name: row.name,
+          scientificName: row.scientific_name ?? undefined,
+          description: row.description ?? undefined,
+          fertilizerTypes: Array.isArray(row.fertilizer_types) ? row.fertilizer_types : undefined,
           light: row.light as LightLevel,
           createdAt: row.created_at,
           careIntervals: row.care_intervals as CareIntervals | undefined,
@@ -36,7 +39,7 @@ export function usePlants(userId: string | undefined) {
     fetchPlants();
   }, [fetchPlants]);
 
-  const addPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts) => {
+  const addPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts, photo?: string, scientificName?: string, description?: string, fertilizerTypes?: string[]) => {
     if (!userId) return;
     const { data, error } = await supabase
       .from("plants")
@@ -47,6 +50,10 @@ export function usePlants(userId: string | undefined) {
         care_intervals: careIntervals ?? {},
         care_amounts: careAmounts ?? {},
         tip: tip ?? null,
+        photo: photo ?? null,
+        scientific_name: scientificName ?? null,
+        description: description ?? null,
+        fertilizer_types: fertilizerTypes ?? [],
       })
       .select()
       .single();
@@ -57,6 +64,9 @@ export function usePlants(userId: string | undefined) {
         {
           id: data.id,
           name: data.name,
+          scientificName: data.scientific_name ?? undefined,
+          description: data.description ?? undefined,
+          fertilizerTypes: Array.isArray(data.fertilizer_types) ? data.fertilizer_types : undefined,
           light: data.light as LightLevel,
           createdAt: data.created_at,
           careIntervals: data.care_intervals as any as CareIntervals | undefined,
@@ -80,6 +90,9 @@ export function usePlants(userId: string | undefined) {
         care_intervals: updatedPlant.careIntervals ?? {},
         care_amounts: updatedPlant.careAmounts ?? {},
         next_care_dates: updatedPlant.nextCareDates ?? {},
+        scientific_name: updatedPlant.scientificName ?? null,
+        description: updatedPlant.description ?? null,
+        fertilizer_types: updatedPlant.fertilizerTypes ?? [],
       })
       .eq("id", updatedPlant.id);
 

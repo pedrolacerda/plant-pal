@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+const todayStr = new Date().toISOString().split("T")[0];
+
 interface UpcomingTasksProps {
   plants: Plant[];
 }
@@ -31,7 +33,9 @@ export function UpcomingTasks({ plants }: UpcomingTasksProps) {
       {Object.entries(grouped).map(([date, dateTasks]) => (
         <div key={date}>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            {format(new Date(date + "T12:00:00"), "EEEE, d MMM", { locale: ptBR })}
+            {date === todayStr
+              ? "Hoje"
+              : format(new Date(date + "T12:00:00"), "EEEE, d MMM", { locale: ptBR })}
           </p>
           <div className="space-y-1.5">
             {dateTasks.map((task, i) => (

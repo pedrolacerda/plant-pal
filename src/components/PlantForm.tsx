@@ -9,7 +9,7 @@ import { Leaf, Loader2, Camera, X, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PlantFormProps {
-  onAdd: (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts) => void;
+  onAdd: (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts, photo?: string, scientificName?: string, description?: string, fertilizerTypes?: string[]) => void;
 }
 
 const LIGHT_OPTIONS: LightLevel[] = ["low", "medium", "high"];
@@ -22,10 +22,12 @@ export function PlantForm({ onAdd }: PlantFormProps) {
   const [fetchingCare, setFetchingCare] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [identifiedInfo, setIdentifiedInfo] = useState<string | null>(null);
+  const [identifiedScientificName, setIdentifiedScientificName] = useState<string | null>(null);
   const [carePreview, setCarePreview] = useState<{
     waterDays: number; fertilizeDays: number; sprayDays: number;
     waterAmount?: number; fertilizerAmount?: number;
     tip?: string; fertilizerHint?: string;
+    scientificName?: string; description?: string; fertilizerTypes?: string[];
   } | null>(null);
   const [careKey, setCareKey] = useState<{ name: string; light: LightLevel } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +64,7 @@ export function PlantForm({ onAdd }: PlantFormProps) {
         setIdentifiedInfo(
           `${data.name}${sciName} — ${confidence}% de confiança`
         );
+        setIdentifiedScientificName(data.scientificName ?? null);
         toast({
           title: "📸 Planta identificada!",
           description: `${data.name}${sciName}`,
@@ -88,6 +91,7 @@ export function PlantForm({ onAdd }: PlantFormProps) {
   const clearPhoto = () => {
     setPhotoPreview(null);
     setIdentifiedInfo(null);
+    setIdentifiedScientificName(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -118,12 +122,13 @@ export function PlantForm({ onAdd }: PlantFormProps) {
 
     // Reuse pre-fetched care data if it matches the current name and light level
     if (carePreview && careKey && careKey.name === currentName && careKey.light === light) {
-      const { waterDays, fertilizeDays, sprayDays, tip, waterAmount, fertilizerAmount } = carePreview;
+      const { waterDays, fertilizeDays, sprayDays, tip, waterAmount, fertilizerAmount, scientificName, description, fertilizerTypes } = carePreview;
       const careAmounts: CareAmounts = {};
       if (waterAmount) careAmounts.water = waterAmount;
       if (fertilizerAmount) careAmounts.fertilizer = fertilizerAmount;
       const hasCareAmounts = Object.keys(careAmounts).length > 0;
-      onAdd(currentName, light, { water: waterDays, fertilize: fertilizeDays, spray: sprayDays }, tip, hasCareAmounts ? careAmounts : undefined);
+      const resolvedScientificName = scientificName || identifiedScientificName || undefined;
+      onAdd(currentName, light, { water: waterDays, fertilize: fertilizeDays, spray: sprayDays }, tip, hasCareAmounts ? careAmounts : undefined, photoPreview ?? undefined, resolvedScientificName, description, fertilizerTypes);
       toast({
         title: "🌿 Planta adicionada!",
         description: tip || "Cuidados personalizados pela IA.",
@@ -149,14 +154,18 @@ export function PlantForm({ onAdd }: PlantFormProps) {
           data.tip,
           data.waterAmount || data.fertilizerAmount
             ? { water: data.waterAmount, fertilizer: data.fertilizerAmount }
-            : undefined
+            : undefined,
+          photoPreview ?? undefined,
+          data.scientificName || identifiedScientificName || undefined,
+          data.description,
+          data.fertilizerTypes,
         );
         toast({
           title: "🌿 Planta adicionada!",
           description: data.tip || "Cuidados personalizados pela IA.",
         });
       } else {
-        onAdd(currentName, light);
+        onAdd(currentName, light, undefined, undefined, undefined, photoPreview ?? undefined);
         toast({
           title: "🌿 Planta adicionada",
           description: "Usando intervalos padrão de cuidado.",
@@ -164,7 +173,7 @@ export function PlantForm({ onAdd }: PlantFormProps) {
         });
       }
     } catch {
-      onAdd(currentName, light);
+      onAdd(currentName, light, undefined, undefined, undefined, photoPreview ?? undefined);
       toast({
         title: "🌿 Planta adicionada",
         description: "Usando intervalos padrão de cuidado.",

@@ -1,4 +1,4 @@
-import type { Plant } from "@/lib/plantCare";
+import type { Plant, CareTask } from "@/lib/plantCare";
 import { getLightIcon, getLightLabel, generateCareTasks, getCareIcon, getCareLabel } from "@/lib/plantCare";
 import { Trash2, Pencil } from "lucide-react";
 import { PlantDiagnosis } from "./PlantDiagnosis";
@@ -7,24 +7,48 @@ interface PlantCardProps {
   plant: Plant;
   onDelete: (id: string) => void;
   onEdit: (plant: Plant) => void;
+  onViewDetails: (plant: Plant) => void;
 }
 
-export function PlantCard({ plant, onDelete, onEdit }: PlantCardProps) {
+function getTaskLabel(task: CareTask, today: string): string {
+  if (task.date === today) return `${getCareLabel(task.type)} hoje`;
+  const diff = Math.round(
+    (new Date(task.date).getTime() - new Date(today).getTime()) / 86_400_000
+  );
+  if (diff === 1) return `${getCareLabel(task.type)} amanhã`;
+  return `${getCareLabel(task.type)} em ${diff}d`;
+}
+
+export function PlantCard({ plant, onDelete, onEdit, onViewDetails }: PlantCardProps) {
   const today = new Date().toISOString().split("T")[0];
-  const todayTasks = generateCareTasks(plant, 1).filter((t) => t.date === today);
+  const allTasks = generateCareTasks(plant, 30);
+  const todayTasks = allTasks.filter((t) => t.date === today);
+
+  // When nothing is due today, show the next upcoming task per care type
+  const displayTasks: CareTask[] =
+    todayTasks.length > 0
+      ? todayTasks
+      : (["water", "fertilize", "spray"] as const).flatMap((type) => {
+          const next = allTasks.find((t) => t.type === type && t.date > today);
+          return next ? [next] : [];
+        });
 
   return (
     <div className="bg-card rounded-2xl p-4 border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
+        <button
+          className="flex items-center gap-3 flex-1 text-left"
+          onClick={() => onViewDetails(plant)}
+          aria-label={`Ver detalhes de ${plant.name}`}
+        >
           {plant.photo ? (
             <img
               src={plant.photo}
               alt={plant.name}
-              className="w-12 h-12 rounded-xl object-cover"
+              className="w-12 h-12 rounded-xl object-cover shrink-0"
             />
           ) : (
-            <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-2xl">
+            <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-2xl shrink-0">
               🪴
             </div>
           )}
@@ -35,8 +59,11 @@ export function PlantCard({ plant, onDelete, onEdit }: PlantCardProps) {
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               {getLightIcon(plant.light)} {getLightLabel(plant.light)}
             </p>
+            {plant.scientificName && (
+              <p className="text-xs text-muted-foreground italic">{plant.scientificName}</p>
+            )}
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-1">
           <button
             onClick={() => onEdit(plant)}
@@ -61,14 +88,14 @@ export function PlantCard({ plant, onDelete, onEdit }: PlantCardProps) {
         </p>
       )}
 
-      {todayTasks.length > 0 && (
+      {displayTasks.length > 0 && (
         <div className="mt-2 flex gap-2 flex-wrap">
-          {todayTasks.map((task, i) => (
+          {displayTasks.map((task, i) => (
             <span
               key={i}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent text-accent-foreground text-xs font-medium"
             >
-              {getCareIcon(task.type)} {getCareLabel(task.type)} hoje
+              {getCareIcon(task.type)} {getTaskLabel(task, today)}
             </span>
           ))}
         </div>
