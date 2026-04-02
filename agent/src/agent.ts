@@ -56,6 +56,62 @@ export async function stopClient(): Promise<void> {
 
 const sessions = new Map<string, CopilotSession>();
 
+// Maximum number of in-memory sessions to keep at any time.
+// This prevents unbounded growth of the sessions map in long-running processes.
+const MAX_SESSIONS =
+  Number.isFinite(Number(process.env.MAX_SESSIONS)) &&
+  Number(process.env.MAX_SESSIONS) > 0
+    ? Number(process.env.MAX_SESSIONS)
+    : 1000;
+
+/**
+ * Evict oldest sessions when the number of active sessions exceeds MAX_SESSIONS.
+ * Uses Map insertion order (oldest first) as an approximation of LRU.
+ */
+function enforceSessionLimit(): void {
+  if (!Number.isFinite(MAX_SESSIONS) || MAX_SESSIONS <= 0) {
+    return;
+  }
+
+  while (sessions.size > MAX_SESSIONS) {
+    const oldestKey = sessions.keys().next().value as string | undefined;
+    if (oldestKey === undefined) {
+      break;
+    }
+
+    const session = sessions.get(oldestKey);
+    // Best-effort disconnect/cleanup for the evicted session, if supported.
+    try {
+      const candidate: unknown = session;
+      if (
+        candidate &&
+        typeof candidate === "object" &&
+        // Common cleanup method names; call if present.
+        (typeof (candidate as any).disconnect === "function" ||
+          typeof (candidate as any).close === "function" ||
+          typeof (candidate as any).stop === "function")
+      ) {
+        if (typeof (candidate as any).disconnect === "function") {
+          (candidate as any).disconnect();
+        } else if (typeof (candidate as any).close === "function") {
+          (candidate as any).close();
+        } else if (typeof (candidate as any).stop === "function") {
+          (candidate as any).stop();
+        }
+      }
+    } catch {
+      // Ignore errors during eviction cleanup; eviction should still proceed.
+    }
+
+    sessions.delete(oldestKey);
+  }
+}
+
+// Periodically enforce the session limit to avoid unbounded growth over time.
+const _sessionCleanupInterval = setInterval(enforceSessionLimit, 60_000);
+// Do not keep the Node.js event loop alive just because of this timer.
+(_sessionCleanupInterval as any).unref?.();
+
 /**
  * Build the personalised system message for a user, injecting their plant list
  * and upcoming care calendar.
