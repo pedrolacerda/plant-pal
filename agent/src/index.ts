@@ -20,6 +20,7 @@ import { isPlantCareRelated, OFF_TOPIC_RESPONSE } from "./guardrails.js";
 const PORT = Number(process.env.PORT ?? 3001);
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "http://localhost:8080";
 const AGENT_API_KEY = process.env.AGENT_API_KEY;
+const GITHUB_MODELS_API_KEY = process.env.GITHUB_MODELS_API_KEY;
 
 // ---------------------------------------------------------------------------
 // Express app
@@ -128,8 +129,8 @@ app.post("/chat", requireAuth, async (req: Request, res: Response) => {
   // Image-only messages bypass text classification (the system prompt handles
   // those) so we only classify when a text message is present.
   // ---------------------------------------------------------------------------
-  if (message && AGENT_API_KEY) {
-    const onTopic = await isPlantCareRelated(message, AGENT_API_KEY);
+  if (message && GITHUB_MODELS_API_KEY) {
+    const onTopic = await isPlantCareRelated(message, GITHUB_MODELS_API_KEY);
     if (!onTopic) {
       console.log(`[chat] Guardrail blocked off-topic message for userId=${userId}`);
       // Stream the refusal as a normal SSE response so the UI renders it correctly.
@@ -281,6 +282,13 @@ async function main() {
       console.log(`[agent] PlantBot server listening on http://localhost:${PORT}`);
       console.log(`[agent] CORS allowed origin: ${ALLOWED_ORIGIN}`);
       console.log(`[agent] Auth: ${AGENT_API_KEY ? "enabled" : "disabled (dev mode)"}`);
+      if (!GITHUB_MODELS_API_KEY) {
+        console.warn(
+          "[agent] WARNING: GITHUB_MODELS_API_KEY is not set — " +
+          "topic guardrail classification will be skipped. " +
+          "The system-prompt guardrail remains active."
+        );
+      }
     });
 
     // Graceful shutdown

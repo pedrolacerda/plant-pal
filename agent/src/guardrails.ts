@@ -11,6 +11,13 @@
  * through (fail-open) so transient errors never block legitimate users.
  */
 
+/**
+ * Maximum number of characters of the user message sent to the classifier.
+ * Keeps the classification call cheap while still giving the model enough
+ * context to make an accurate judgement.
+ */
+const MAX_CLASSIFIER_INPUT_LENGTH = 500;
+
 const CLASSIFIER_SYSTEM_PROMPT = `You are a topic classifier for a plant care assistant called PlantBot.
 Determine whether a user message is related to plant care, gardening, or botany.
 
@@ -61,8 +68,7 @@ export async function isPlantCareRelated(
           model: "openai/gpt-4.1-nano",
           messages: [
             { role: "system", content: CLASSIFIER_SYSTEM_PROMPT },
-            // Truncate to 500 chars – we only need to classify, not parse fully
-            { role: "user", content: trimmed.slice(0, 500) },
+            { role: "user", content: trimmed.slice(0, MAX_CLASSIFIER_INPUT_LENGTH) },
           ],
           max_tokens: 5,
           temperature: 0,
