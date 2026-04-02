@@ -11,6 +11,7 @@ import {
   clearSession,
   type PlantSummary,
 } from "./agent.js";
+import { isPlantCareRelated, OFF_TOPIC_RESPONSE } from "./guardrails.js";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -121,6 +122,28 @@ app.post("/chat", requireAuth, async (req: Request, res: Response) => {
 
   const msgPreview = message ? message.slice(0, 80) + (message.length > 80 ? "…" : "") : "(image only)";
   console.log(`[chat] Request — userId=${userId} plants=${plants.length} hasImage=${!!imageBase64} message="${msgPreview}"`);
+
+  // ---------------------------------------------------------------------------
+  // Guardrail: reject off-topic messages before touching the agent session.
+  // Image-only messages bypass text classification (the system prompt handles
+  // those) so we only classify when a text message is present.
+  // ---------------------------------------------------------------------------
+  if (message && AGENT_API_KEY) {
+    const onTopic = await isPlantCareRelated(message, AGENT_API_KEY);
+    if (!onTopic) {
+      console.log(`[chat] Guardrail blocked off-topic message for userId=${userId}`);
+      // Stream the refusal as a normal SSE response so the UI renders it correctly.
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+      res.write(`data: ${JSON.stringify({ type: "delta", content: OFF_TOPIC_RESPONSE })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+      res.end();
+      return;
+    }
+  }
 
   // Set up SSE headers
   res.setHeader("Content-Type", "text/event-stream");
