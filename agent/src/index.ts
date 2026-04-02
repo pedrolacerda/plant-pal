@@ -3,6 +3,7 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import os from "os";
 import path from "path";
+import { existsSync } from "fs";
 import { writeFile, unlink } from "fs/promises";
 import {
   startClient,
@@ -21,6 +22,12 @@ const PORT = Number(process.env.PORT ?? 3001);
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "http://localhost:8080";
 const AGENT_API_KEY = process.env.AGENT_API_KEY;
 const GITHUB_MODELS_API_KEY = process.env.GITHUB_MODELS_API_KEY;
+
+// Path to the built Vite frontend (relative to agent dist output)
+const CLIENT_DIST = path.resolve(
+  import.meta.dirname ?? path.dirname(new URL(import.meta.url).pathname),
+  "../../dist"
+);
 
 // ---------------------------------------------------------------------------
 // Express app
@@ -276,6 +283,19 @@ app.delete(
     res.json({ success: true });
   }
 );
+
+// ---------------------------------------------------------------------------
+// Serve built Vite frontend (production)
+// ---------------------------------------------------------------------------
+
+if (existsSync(CLIENT_DIST)) {
+  console.log(`[agent] Serving static frontend from ${CLIENT_DIST}`);
+  app.use(express.static(CLIENT_DIST));
+  // SPA fallback – serve index.html for any non-API route
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(CLIENT_DIST, "index.html"));
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Start server

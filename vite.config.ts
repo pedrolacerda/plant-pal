@@ -11,6 +11,10 @@ export default defineConfig(() => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      "/chat": "http://localhost:3001",
+      "/health": "http://localhost:3001",
+    },
   },
   plugins: [
     react(),

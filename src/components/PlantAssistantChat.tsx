@@ -47,7 +47,7 @@ interface Props {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const AGENT_URL = import.meta.env.VITE_AGENT_URL ?? "http://localhost:3001";
+const AGENT_URL = import.meta.env.VITE_AGENT_URL ?? "";
 const AGENT_API_KEY = import.meta.env.VITE_GITHUB_MODELS_API_KEY ?? "";
 
 function buildHeaders(): HeadersInit {
