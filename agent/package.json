@@ -5,6 +5,9 @@
   "description": "PlantBot – Copilot SDK agent backend for Plant Pal",
   "type": "module",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
