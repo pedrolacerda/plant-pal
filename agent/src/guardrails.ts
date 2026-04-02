@@ -90,7 +90,7 @@ export async function isPlantCareRelated(
     const answer =
       data.choices?.[0]?.message?.content?.trim().toLowerCase() ?? "yes";
 
-    const onTopic = answer === "yes" || answer.startsWith("yes");
+    const onTopic = answer === "yes";
     if (!onTopic) {
       console.log(`[guardrails] Off-topic message blocked: "${trimmed.slice(0, 80)}"`);
     }
