@@ -13,8 +13,8 @@ SELECT cron.schedule(
   '0 11 * * *',
   $$
   SELECT net.http_post(
-    url     := 'https://ibenemxicnhjmvzuklrl.supabase.co/functions/v1/care-notifications',
-    headers := '{"Content-Type":"application/json","apikey":"sb_publishable_iedfnEKKCi29eQu_DTVB4w_M3LAY28x"}'::jsonb,
+    url     := 'https://aonlpickejwjldvaulvz.supabase.co/functions/v1/care-notifications',
+    headers := '{"Content-Type":"application/json","apikey":"sb_publishable_yYgFkJVxAU3BLpFg8s6nQQ_RcZwzpEv"}'::jsonb,
     body    := '{}'::jsonb
   );
   $$
