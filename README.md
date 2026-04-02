@@ -92,7 +92,7 @@ Browser (React)
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 18+
+- [Node.js](https://nodejs.org/) 20+
 - [Copilot CLI](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli) installed and available in your `PATH` — the Copilot SDK spawns it as a subprocess
 
 ### Running the agent server
