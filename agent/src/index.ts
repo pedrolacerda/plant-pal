@@ -151,9 +151,16 @@ app.post("/chat", requireAuth, async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no"); // Disable Nginx buffering
-  res.flushHeaders();
-  console.log(`[chat] SSE headers flushed for userId=${userId}`);
-
+    // This can leak sensitive data, so gate it behind an env flag.
+    let unsubAll: (() => void) | undefined;
+    if (process.env.DEBUG_COPILOT_EVENTS === "1") {
+      unsubAll = session.on((event) => {
+        console.log(
+          `[chat][DEBUG] Event: ${event.type}`,
+          JSON.stringify(event.data).slice(0, 300)
+        );
+      });
+    }
   const sendEvent = (data: object) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
