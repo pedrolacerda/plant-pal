@@ -1,6 +1,6 @@
-import type { Plant, CareTask } from "@/lib/plantCare";
+import type { Plant, CareTask, CareIntervals } from "@/lib/plantCare";
 import { getLightIcon, getLightLabel, generateCareTasks, getCareIcon, getCareLabel } from "@/lib/plantCare";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, CheckCircle2 } from "lucide-react";
 import { PlantDiagnosis } from "./PlantDiagnosis";
 
 interface PlantCardProps {
@@ -8,6 +8,7 @@ interface PlantCardProps {
   onDelete: (id: string) => void;
   onEdit: (plant: Plant) => void;
   onViewDetails: (plant: Plant) => void;
+  onRegisterCare?: (plant: Plant, type: "water" | "fertilize" | "spray") => void;
 }
 
 function getTaskLabel(task: CareTask, today: string): string {
@@ -19,7 +20,7 @@ function getTaskLabel(task: CareTask, today: string): string {
   return `${getCareLabel(task.type)} em ${diff}d`;
 }
 
-export function PlantCard({ plant, onDelete, onEdit, onViewDetails }: PlantCardProps) {
+export function PlantCard({ plant, onDelete, onEdit, onViewDetails, onRegisterCare }: PlantCardProps) {
   const today = new Date().toISOString().split("T")[0];
   const allTasks = generateCareTasks(plant, 30);
   const todayTasks = allTasks.filter((t) => t.date === today);
@@ -95,9 +96,29 @@ export function PlantCard({ plant, onDelete, onEdit, onViewDetails }: PlantCardP
               key={i}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent text-accent-foreground text-xs font-medium"
             >
-              {getCareIcon(task.type)} {getTaskLabel(task, today)}
+              {getCareIcon(task.type)} {getTaskLabel(task, today)}{task.amount != null ? ` • ${task.amount}ml` : ""}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Quick care registration buttons */}
+      {onRegisterCare && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <p className="text-[11px] text-muted-foreground mb-2">Registrar cuidado realizado:</p>
+          <div className="flex gap-2">
+            {(["water", "fertilize", "spray"] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => onRegisterCare(plant, type)}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl border border-border bg-accent/40 hover:bg-primary/10 hover:border-primary/40 text-xs font-medium text-foreground transition-colors"
+                aria-label={`Registrar ${getCareLabel(type)}`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                {getCareIcon(type)} {getCareLabel(type)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

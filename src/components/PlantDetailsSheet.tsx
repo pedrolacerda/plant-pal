@@ -61,37 +61,21 @@ export function PlantDetailsSheet({ plant, open, onOpenChange }: PlantDetailsShe
                 {(["water", "fertilize", "spray"] as const).map((type) => {
                   const days = plant.careIntervals?.[type];
                   if (!days) return null;
+                  const amount = type === "water" ? plant.careAmounts?.water
+                    : type === "fertilize" ? plant.careAmounts?.fertilizer
+                    : undefined;
                   return (
                     <div key={type} className="flex flex-col items-center gap-1 p-3 rounded-xl bg-accent/50 border border-border text-center">
                       <span className="text-xl">{getCareIcon(type)}</span>
                       <span className="text-xs font-semibold text-foreground">{getCareLabel(type)}</span>
                       <span className="text-xs text-muted-foreground">a cada {days}d</span>
+                      {amount != null && (
+                        <span className="text-[11px] font-medium text-primary">{amount} ml</span>
+                      )}
                     </div>
                   );
                 })}
               </div>
-
-              {/* Care amounts */}
-              {(plant.careAmounts?.water || plant.careAmounts?.fertilizer) && (
-                <div className="flex gap-3 mt-2">
-                  {plant.careAmounts?.water && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-accent/40 text-sm">
-                      <span>💧</span>
-                      <span className="text-muted-foreground">
-                        <span className="font-medium text-foreground">{plant.careAmounts.water} ml</span> por rega
-                      </span>
-                    </div>
-                  )}
-                  {plant.careAmounts?.fertilizer && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-accent/40 text-sm">
-                      <span>🌱</span>
-                      <span className="text-muted-foreground">
-                        <span className="font-medium text-foreground">{plant.careAmounts.fertilizer} ml</span> fertilizante
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 

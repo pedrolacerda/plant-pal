@@ -10,7 +10,9 @@ import { PlantDetailsSheet } from "@/components/PlantDetailsSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlants } from "@/hooks/usePlants";
 import type { Plant, LightLevel, CareIntervals, CareAmounts } from "@/lib/plantCare";
+import { getCareLabel } from "@/lib/plantCare";
 import { CalendarDays, Leaf, ListChecks, LogOut, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const { user, signOut } = useAuth();
@@ -20,6 +22,8 @@ const Index = () => {
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [detailsPlant, setDetailsPlant] = useState<Plant | null>(null);
   const [detailsSheetOpen, setDetailsSheetOpen] = useState(false);
+  const [editSheetAutoAI, setEditSheetAutoAI] = useState(false);
+  const { toast } = useToast();
 
   const handleViewDetails = (plant: Plant) => {
     setDetailsPlant(plant);
@@ -27,13 +31,48 @@ const Index = () => {
   };
 
   const handleAddPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts, photo?: string, scientificName?: string, description?: string, fertilizerTypes?: string[]) => {
-    await addPlant(name, light, careIntervals, tip, careAmounts, photo, scientificName, description, fertilizerTypes);
+    const newPlant = await addPlant(name, light, careIntervals, tip, careAmounts, photo, scientificName, description, fertilizerTypes);
     setActiveTab("home");
+    // Immediately open care program editor with AI suggestion
+    if (newPlant) {
+      setEditingPlant(newPlant);
+      setEditSheetAutoAI(true);
+      setEditSheetOpen(true);
+    }
   };
 
   const handleEditPlant = (plant: Plant) => {
     setEditingPlant(plant);
+    setEditSheetAutoAI(false);
     setEditSheetOpen(true);
+  };
+
+  const DEFAULT_CARE_INTERVALS: Record<LightLevel, CareIntervals> = {
+    low: { water: 7, fertilize: 30, spray: 10 },
+    medium: { water: 4, fertilize: 21, spray: 7 },
+    high: { water: 2, fertilize: 14, spray: 5 },
+  };
+
+  const handleRegisterCare = async (plant: Plant, type: "water" | "fertilize" | "spray") => {
+    const today = new Date().toISOString().split("T")[0];
+    const intervals = plant.careIntervals || DEFAULT_CARE_INTERVALS[plant.light];
+    const interval = intervals[type];
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + interval);
+    const nextDateStr = nextDate.toISOString().split("T")[0];
+
+    const updatedPlant: Plant = {
+      ...plant,
+      nextCareDates: {
+        ...plant.nextCareDates,
+        [type]: nextDateStr,
+      },
+    };
+    await updatePlant(updatedPlant);
+    toast({
+      title: `✅ ${getCareLabel(type)} registrada!`,
+      description: `Próxima: ${new Date(nextDateStr).toLocaleDateString("pt-BR")}`,
+    });
   };
 
   return (
@@ -74,7 +113,7 @@ const Index = () => {
                   Minhas plantas ({plants.length})
                 </h2>
                 {plants.map((plant) => (
-                  <PlantCard key={plant.id} plant={plant} onDelete={(id) => deletePlant(id)} onEdit={handleEditPlant} onViewDetails={handleViewDetails} />
+                  <PlantCard key={plant.id} plant={plant} onDelete={(id) => deletePlant(id)} onEdit={handleEditPlant} onViewDetails={handleViewDetails} onRegisterCare={handleRegisterCare} />
                 ))}
               </div>
             ) : null}
@@ -102,7 +141,10 @@ const Index = () => {
             <span className="text-[10px] font-medium">Calendário</span>
           </TabsTrigger>
           <TabsTrigger value="add" className="flex flex-col gap-0.5 items-center data-[state=active]:bg-transparent data-[state=active]:text-primary text-muted-foreground data-[state=active]:shadow-none rounded-none h-full">
-            <Leaf className="w-5 h-5" />
+            <div className="relative">
+              <Leaf className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1.5 text-[9px] font-bold leading-none">+</span>
+            </div>
             <span className="text-[10px] font-medium">Adicionar</span>
           </TabsTrigger>
         </TabsList>
@@ -111,8 +153,12 @@ const Index = () => {
       <PlantEditSheet
         plant={editingPlant}
         open={editSheetOpen}
-        onOpenChange={setEditSheetOpen}
+        onOpenChange={(open) => {
+          setEditSheetOpen(open);
+          if (!open) setEditSheetAutoAI(false);
+        }}
         onSave={(p) => updatePlant(p)}
+        autoFetchAI={editSheetAutoAI}
       />
 
       <PlantDetailsSheet

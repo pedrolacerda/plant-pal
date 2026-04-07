@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -35,12 +35,13 @@ interface PlantEditSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (updatedPlant: Plant) => void;
+  autoFetchAI?: boolean;
 }
 
 const LIGHT_OPTIONS: LightLevel[] = ["low", "medium", "high"];
 const CARE_TYPES = ["water", "fertilize", "spray"] as const;
 
-export function PlantEditSheet({ plant, open, onOpenChange, onSave }: PlantEditSheetProps) {
+export function PlantEditSheet({ plant, open, onOpenChange, onSave, autoFetchAI }: PlantEditSheetProps) {
   const [light, setLight] = useState<LightLevel>(plant?.light || "medium");
   const [photo, setPhoto] = useState<string | undefined>(plant?.photo);
   const [nextCareDates, setNextCareDates] = useState<Record<string, string | undefined>>(
@@ -55,7 +56,9 @@ export function PlantEditSheet({ plant, open, onOpenChange, onSave }: PlantEditS
   );
   // Editable care intervals
   const [careIntervals, setCareIntervals] = useState<CareIntervals>(
-    plant?.careIntervals || DEFAULT_CARE_INTERVALS[plant?.light || "medium"]
+    plant?.careIntervals && plant.careIntervals.water
+      ? plant.careIntervals
+      : DEFAULT_CARE_INTERVALS[plant?.light || "medium"]
   );
   // AI suggestion state
   const [fetchingAI, setFetchingAI] = useState(false);
@@ -65,6 +68,9 @@ export function PlantEditSheet({ plant, open, onOpenChange, onSave }: PlantEditS
     tip?: string; fertilizerHint?: string;
     fertilizerTypes?: string[];
   } | null>(null);
+  const [appliedAITip, setAppliedAITip] = useState<string | undefined>(undefined);
+  const [appliedAIFertilizerTypes, setAppliedAIFertilizerTypes] = useState<string[] | undefined>(undefined);
+  const [didAutoFetch, setDidAutoFetch] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -79,9 +85,54 @@ export function PlantEditSheet({ plant, open, onOpenChange, onSave }: PlantEditS
     setLastCareDates({});
     setWaterAmount(plant.careAmounts?.water?.toString() ?? "");
     setFertilizerAmount(plant.careAmounts?.fertilizer?.toString() ?? "");
-    setCareIntervals(plant.careIntervals || DEFAULT_CARE_INTERVALS[plant.light]);
+    setCareIntervals(
+      plant.careIntervals && plant.careIntervals.water
+        ? plant.careIntervals
+        : DEFAULT_CARE_INTERVALS[plant.light]
+    );
     setAiSuggestion(null);
+    setAppliedAITip(undefined);
+    setAppliedAIFertilizerTypes(undefined);
+    setDidAutoFetch(false);
   }
+
+  // Auto-fetch AI and pre-fill when opened with autoFetchAI flag
+  useEffect(() => {
+    if (open && autoFetchAI && plant && !didAutoFetch) {
+      setDidAutoFetch(true);
+      let cancelled = false;
+      const doFetch = async () => {
+        setFetchingAI(true);
+        try {
+          const { data, error } = await supabase.functions.invoke("plant-care", {
+            body: { plantName: plant.name, light: plant.light },
+          });
+          if (cancelled) return;
+          if (!error && data) {
+            setCareIntervals({
+              water: data.waterDays,
+              fertilize: data.fertilizeDays,
+              spray: data.sprayDays,
+            });
+            if (data.waterAmount) setWaterAmount(data.waterAmount.toString());
+            if (data.fertilizerAmount) setFertilizerAmount(data.fertilizerAmount.toString());
+            if (data.tip) setAppliedAITip(data.tip);
+            if (data.fertilizerTypes) setAppliedAIFertilizerTypes(data.fertilizerTypes);
+            toast({ title: "✨ Cuidados sugeridos pela IA", description: data.tip || "Programa de cuidados preenchido. Revise e salve." });
+          }
+        } catch {
+          // silent — user can still edit manually
+        } finally {
+          if (!cancelled) setFetchingAI(false);
+        }
+      };
+      doFetch();
+      return () => { cancelled = true; };
+    }
+    if (!open) {
+      setDidAutoFetch(false);
+    }
+  }, [open, autoFetchAI, plant, didAutoFetch]);
 
   if (!plant) return null;
 
@@ -134,15 +185,29 @@ export function PlantEditSheet({ plant, open, onOpenChange, onSave }: PlantEditS
     }
   };
 
-  const fetchAISuggestion = async () => {
+  const fetchAISuggestionFor = async (plantName: string, plantLight: LightLevel, applyDirectly = false) => {
     setFetchingAI(true);
     setAiSuggestion(null);
     try {
       const { data, error } = await supabase.functions.invoke("plant-care", {
-        body: { plantName: plant.name, light },
+        body: { plantName, light: plantLight },
       });
       if (!error && data) {
-        setAiSuggestion(data);
+        if (applyDirectly) {
+          // Pre-fill forms directly instead of showing a preview card
+          setCareIntervals({
+            water: data.waterDays,
+            fertilize: data.fertilizeDays,
+            spray: data.sprayDays,
+          });
+          if (data.waterAmount) setWaterAmount(data.waterAmount.toString());
+          if (data.fertilizerAmount) setFertilizerAmount(data.fertilizerAmount.toString());
+          if (data.tip) setAppliedAITip(data.tip);
+          if (data.fertilizerTypes) setAppliedAIFertilizerTypes(data.fertilizerTypes);
+          toast({ title: "✨ Cuidados sugeridos pela IA", description: data.tip || "Programa de cuidados preenchido. Revise e salve." });
+        } else {
+          setAiSuggestion(data);
+        }
       } else {
         toast({
           title: "Erro ao consultar IA",
@@ -160,6 +225,8 @@ export function PlantEditSheet({ plant, open, onOpenChange, onSave }: PlantEditS
       setFetchingAI(false);
     }
   };
+
+  const fetchAISuggestion = () => fetchAISuggestionFor(plant.name, light);
 
   const acceptAISuggestion = () => {
     if (!aiSuggestion) return;
@@ -213,8 +280,8 @@ export function PlantEditSheet({ plant, open, onOpenChange, onSave }: PlantEditS
         water: waterAmount ? Number(waterAmount) : undefined,
         fertilizer: fertilizerAmount ? Number(fertilizerAmount) : undefined,
       },
-      tip: aiSuggestion?.tip ?? plant.tip,
-      fertilizerTypes: aiSuggestion?.fertilizerTypes ?? plant.fertilizerTypes,
+      tip: aiSuggestion?.tip ?? appliedAITip ?? plant.tip,
+      fertilizerTypes: aiSuggestion?.fertilizerTypes ?? appliedAIFertilizerTypes ?? plant.fertilizerTypes,
     };
 
     onSave(updatedPlant);

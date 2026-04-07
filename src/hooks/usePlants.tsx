@@ -39,8 +39,8 @@ export function usePlants(userId: string | undefined) {
     fetchPlants();
   }, [fetchPlants]);
 
-  const addPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts, photo?: string, scientificName?: string, description?: string, fertilizerTypes?: string[]) => {
-    if (!userId) return;
+  const addPlant = async (name: string, light: LightLevel, careIntervals?: CareIntervals, tip?: string, careAmounts?: CareAmounts, photo?: string, scientificName?: string, description?: string, fertilizerTypes?: string[]): Promise<Plant | undefined> => {
+    if (!userId) return undefined;
     const { data, error } = await supabase
       .from("plants")
       .insert({
@@ -59,24 +59,24 @@ export function usePlants(userId: string | undefined) {
       .single();
 
     if (!error && data) {
-      setPlants((prev) => [
-        ...prev,
-        {
-          id: data.id,
-          name: data.name,
-          scientificName: data.scientific_name ?? undefined,
-          description: data.description ?? undefined,
-          fertilizerTypes: Array.isArray(data.fertilizer_types) ? data.fertilizer_types : undefined,
-          light: data.light as LightLevel,
-          createdAt: data.created_at,
-          careIntervals: data.care_intervals as any as CareIntervals | undefined,
-          careAmounts: data.care_amounts as any as CareAmounts | undefined,
-          tip: data.tip ?? undefined,
-          photo: data.photo ?? undefined,
-          nextCareDates: data.next_care_dates as any as Plant["nextCareDates"] | undefined,
-        },
-      ]);
+      const newPlant: Plant = {
+        id: data.id,
+        name: data.name,
+        scientificName: data.scientific_name ?? undefined,
+        description: data.description ?? undefined,
+        fertilizerTypes: Array.isArray(data.fertilizer_types) ? data.fertilizer_types : undefined,
+        light: data.light as LightLevel,
+        createdAt: data.created_at,
+        careIntervals: data.care_intervals as any as CareIntervals | undefined,
+        careAmounts: data.care_amounts as any as CareAmounts | undefined,
+        tip: data.tip ?? undefined,
+        photo: data.photo ?? undefined,
+        nextCareDates: data.next_care_dates as any as Plant["nextCareDates"] | undefined,
+      };
+      setPlants((prev) => [...prev, newPlant]);
+      return newPlant;
     }
+    return undefined;
   };
 
   const updatePlant = async (updatedPlant: Plant) => {
