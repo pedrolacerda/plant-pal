@@ -71,6 +71,7 @@ export function PlantEditSheet({ plant, open, onOpenChange, onSave, autoFetchAI 
   const [appliedAITip, setAppliedAITip] = useState<string | undefined>(undefined);
   const [appliedAIFertilizerTypes, setAppliedAIFertilizerTypes] = useState<string[] | undefined>(undefined);
   const [didAutoFetch, setDidAutoFetch] = useState(false);
+  const autoFetchRef = useRef(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -94,43 +95,39 @@ export function PlantEditSheet({ plant, open, onOpenChange, onSave, autoFetchAI 
     setAppliedAITip(undefined);
     setAppliedAIFertilizerTypes(undefined);
     setDidAutoFetch(false);
+    autoFetchRef.current = false;
   }
 
   // Auto-fetch AI and pre-fill when opened with autoFetchAI flag
   useEffect(() => {
-    if (open && autoFetchAI && plant && !didAutoFetch) {
+    if (open && autoFetchAI && plant && !autoFetchRef.current) {
+      autoFetchRef.current = true;
       setDidAutoFetch(true);
-      let cancelled = false;
-      const doFetch = async () => {
-        setFetchingAI(true);
-        try {
-          const { data, error } = await supabase.functions.invoke("plant-care", {
-            body: { plantName: plant.name, light: plant.light },
+      setFetchingAI(true);
+      supabase.functions.invoke("plant-care", {
+        body: { plantName: plant.name, light: plant.light },
+      }).then(({ data, error }) => {
+        if (!error && data) {
+          setCareIntervals({
+            water: data.waterDays,
+            fertilize: data.fertilizeDays,
+            spray: data.sprayDays,
           });
-          if (cancelled) return;
-          if (!error && data) {
-            setCareIntervals({
-              water: data.waterDays,
-              fertilize: data.fertilizeDays,
-              spray: data.sprayDays,
-            });
-            if (data.waterAmount) setWaterAmount(data.waterAmount.toString());
-            if (data.fertilizerAmount) setFertilizerAmount(data.fertilizerAmount.toString());
-            if (data.tip) setAppliedAITip(data.tip);
-            if (data.fertilizerTypes) setAppliedAIFertilizerTypes(data.fertilizerTypes);
-            toast({ title: "✨ Cuidados sugeridos pela IA", description: data.tip || "Programa de cuidados preenchido. Revise e salve." });
-          }
-        } catch {
-          // silent — user can still edit manually
-        } finally {
-          if (!cancelled) setFetchingAI(false);
+          if (data.waterAmount) setWaterAmount(data.waterAmount.toString());
+          if (data.fertilizerAmount) setFertilizerAmount(data.fertilizerAmount.toString());
+          if (data.tip) setAppliedAITip(data.tip);
+          if (data.fertilizerTypes) setAppliedAIFertilizerTypes(data.fertilizerTypes);
+          toast({ title: "✨ Cuidados sugeridos pela IA", description: data.tip || "Programa de cuidados preenchido. Revise e salve." });
         }
-      };
-      doFetch();
-      return () => { cancelled = true; };
+      }).catch(() => {
+        // silent — user can still edit manually
+      }).finally(() => {
+        setFetchingAI(false);
+      });
     }
     if (!open) {
       setDidAutoFetch(false);
+      autoFetchRef.current = false;
     }
   }, [open, autoFetchAI, plant, didAutoFetch]);
 
@@ -645,10 +642,20 @@ export function PlantEditSheet({ plant, open, onOpenChange, onSave, autoFetchAI 
           {/* Save button */}
           <Button
             onClick={handleSave}
+            disabled={fetchingAI}
             className="w-full h-12 rounded-xl text-base font-semibold gap-2"
           >
-            <Save className="w-5 h-5" />
-            Salvar alterações
+            {fetchingAI ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Aguardando IA...
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                Salvar alterações
+              </>
+            )}
           </Button>
         </div>
       </SheetContent>
