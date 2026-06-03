@@ -158,16 +158,6 @@ app.post("/chat", requireAuth, async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no"); // Disable Nginx buffering
-    // This can leak sensitive data, so gate it behind an env flag.
-    let unsubAll: (() => void) | undefined;
-    if (process.env.DEBUG_COPILOT_EVENTS === "1") {
-      unsubAll = session.on((event) => {
-        console.log(
-          `[chat][DEBUG] Event: ${event.type}`,
-          JSON.stringify(event.data).slice(0, 300)
-        );
-      });
-    }
   const sendEvent = (data: object) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
@@ -305,8 +295,8 @@ async function main() {
   try {
     await startClient();
 
-    const server = app.listen(PORT, () => {
-      console.log(`[agent] PlantBot server listening on http://localhost:${PORT}`);
+    const server = app.listen(PORT, "0.0.0.0", () => {
+      console.log(`[agent] PlantBot server listening on http://0.0.0.0:${PORT}`);
       console.log(`[agent] CORS allowed origin: ${ALLOWED_ORIGIN}`);
       console.log(`[agent] Auth: ${AGENT_API_KEY ? "enabled" : "disabled (dev mode)"}`);
       if (!GITHUB_MODELS_API_KEY) {
