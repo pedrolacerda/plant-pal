@@ -1,10 +1,15 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
+import { clientsClaim } from "workbox-core";
 
 declare const self: ServiceWorkerGlobalScope;
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
+
+// Ensure new SW versions take control without waiting for a second reload.
+self.skipWaiting();
+clientsClaim();
 
 self.addEventListener("push", (event: PushEvent) => {
   const data = event.data?.json() ?? {};
