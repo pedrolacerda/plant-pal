@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePlants } from "@/hooks/usePlants";
 import type { Plant, LightLevel, CareIntervals, CareAmounts } from "@/lib/plantCare";
 import { getCareLabel } from "@/lib/plantCare";
-import { CalendarDays, Leaf, ListChecks, LogOut, Loader2 } from "lucide-react";
+import { CalendarDays, Leaf, ListChecks, LogOut, Loader2, Sprout } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -102,7 +102,9 @@ const Index = () => {
               <h2 className="font-display text-base font-semibold text-foreground mb-1">Próximos cuidados</h2>
               <UpcomingTasks plants={plants} />
             </div>
+          </TabsContent>
 
+          <TabsContent value="plants" className="mt-0">
             {loading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -116,7 +118,9 @@ const Index = () => {
                   <PlantCard key={plant.id} plant={plant} onDelete={(id) => deletePlant(id)} onEdit={handleEditPlant} onViewDetails={handleViewDetails} onRegisterCare={handleRegisterCare} />
                 ))}
               </div>
-            ) : null}
+            ) : (
+              <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma planta adicionada ainda.</p>
+            )}
           </TabsContent>
 
           <TabsContent value="calendar" className="mt-0">
@@ -131,10 +135,14 @@ const Index = () => {
           </TabsContent>
         </div>
 
-        <TabsList className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto h-16 bg-card border-t border-border rounded-none grid grid-cols-3 px-2 shadow-lg z-50">
+        <TabsList className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto h-16 bg-card border-t border-border rounded-none grid grid-cols-4 px-2 shadow-lg z-50">
           <TabsTrigger value="home" className="flex flex-col gap-0.5 items-center data-[state=active]:bg-transparent data-[state=active]:text-primary text-muted-foreground data-[state=active]:shadow-none rounded-none h-full">
             <ListChecks className="w-5 h-5" />
             <span className="text-[10px] font-medium">Início</span>
+          </TabsTrigger>
+          <TabsTrigger value="plants" className="flex flex-col gap-0.5 items-center data-[state=active]:bg-transparent data-[state=active]:text-primary text-muted-foreground data-[state=active]:shadow-none rounded-none h-full">
+            <Sprout className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Plantas</span>
           </TabsTrigger>
           <TabsTrigger value="calendar" className="flex flex-col gap-0.5 items-center data-[state=active]:bg-transparent data-[state=active]:text-primary text-muted-foreground data-[state=active]:shadow-none rounded-none h-full">
             <CalendarDays className="w-5 h-5" />
